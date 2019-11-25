@@ -9,6 +9,9 @@ public class player : MonoBehaviour
     SpriteRenderer spriteRenderer;
 
     bool isGrounded;
+    bool isRunning = false;
+    bool isGoingARight = true; 
+
     [SerializeField]
     Transform groundCheckL;
     [SerializeField]
@@ -16,40 +19,71 @@ public class player : MonoBehaviour
     [SerializeField]
     Transform groundCheckC;
 
+    Object bulletRef;
+
+    public float fireRate = 0.5F;
+    private float nextFire = 0.0F;
+    public float jumpRate = 0.5F;
+    private float nextJump = 0.0F;
+    
     // Start is called before the first frame update
     void Start()
     {
         animator = GetComponent<Animator>();
         rb2d = GetComponent<Rigidbody2D>();
         spriteRenderer = GetComponent<SpriteRenderer>();
+        bulletRef = Resources.Load("bullet");
     }
 
     void FixedUpdate()
     {        
 
         isGrounded = isTouchingTheGround();
-        if (!isGrounded) animator.Play("player_jump");
+
+        animator.SetBool("isJumping", !isGrounded);
 
         if (Input.GetKey("d") || Input.GetKey("right"))
         {
             rb2d.velocity = new Vector2(2, rb2d.velocity.y);
-            if (isGrounded) animator.Play("player_run");
             spriteRenderer.flipX = false;
+            isRunning = true;
+            isGoingARight = true;
         } else if (Input.GetKey("a") || Input.GetKey("left")) {
             rb2d.velocity = new Vector2(-2, rb2d.velocity.y);
-            if (isGrounded) animator.Play("player_run");
             spriteRenderer.flipX = true;
+            isRunning = true;
+            isGoingARight = false;
         } else
         {
             rb2d.velocity = new Vector2(0, rb2d.velocity.y);
-            if (isGrounded) animator.Play("player_idle");
+            isRunning = false;
         }
 
-        if (Input.GetKey("space") && isGrounded)
+        if (Input.GetKey("s") && Time.time > nextFire)
+        {
+            animator.SetTrigger("shooting");
+            isRunning = false;
+            nextFire = Time.time + fireRate;
+            makeOneShoot();
+        }            
+
+
+        if (Input.GetKey("space") && isGrounded && Time.time > nextJump)
         {
             rb2d.velocity = new Vector2(rb2d.velocity.x, 4);
-            animator.Play("player_jump");
+            nextJump = Time.time + jumpRate;
         }
+
+        if (isGrounded && isRunning)
+        {
+            animator.SetBool("isRunning", true);
+        }
+
+        if (isGrounded && !isRunning)
+        {
+            animator.SetBool("isRunning", false);
+        }
+
     }
 
     bool isTouchingTheGround()
@@ -65,4 +99,20 @@ public class player : MonoBehaviour
 
         return false;
     }
+
+    void makeOneShoot()
+    {
+        GameObject bullet = (GameObject)Instantiate(bulletRef);
+
+        object[] bulletConfig = new object[4];
+        bulletConfig[0] = isGoingARight;
+        bulletConfig[1] = transform.position.x;
+        bulletConfig[2] = transform.position.y;
+
+        bullet.SendMessage(
+            "initBullet",
+            bulletConfig
+        );
+    }
+
 }
